@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Voice Vase</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+body{margin:0}img{max-width:100%}[hidden]{display:none!important}
+/* Layout: gallery plinth — the vessel alone in the middle of a dotted studio sheet, the voice note as a tick timeline beneath it, every setting in one quiet sidebar. Deliberately light-only, like paper. */
+:root{
+  --paper:#F6F5F2; --dot:#DCD9D3; --card:#FCFBF9; --ink:#1D1C1A; --muted:#8C8882; --line:#E7E4DF;
+  --rose:#D4677B; --rose-wash:#FBEEF0; --rose-line:#EFC6CE;
+  --f-ui:"Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-serif:"Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --f-mono:"Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme:light;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-ui);font-size:14px;line-height:1.45}
+.app{height:100%;display:grid;grid-template-columns:minmax(0,1fr) 360px}
+@media (max-width:900px){html,body{height:auto}.app{grid-template-columns:minmax(0,1fr);height:auto}}
+
+/* ---------- stage ---------- */
+.stage{position:relative;display:flex;flex-direction:column;min-width:0;min-height:0;padding:20px 20px 22px;
+  background-image:radial-gradient(var(--dot) 1px,transparent 1.3px);background-size:22px 22px}
+@media (max-width:900px){.stage{height:auto;min-height:0}}
+.top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px 24px;position:relative;z-index:2}
+.title{display:flex;flex-direction:column;gap:12px}
+.title h1{margin:0;font-weight:500;font-size:17px;letter-spacing:-.01em}
+.stats{display:flex;gap:30px}
+.stat b{display:block;font-weight:400;font-size:44px;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.stat span{display:block;margin-top:6px;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.hint{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:8px 14px;color:var(--muted);font-size:13px}
+@media (max-width:1180px){.hint{display:none}}
+.view{position:relative;flex:1;min-height:360px;background:radial-gradient(ellipse 46% 52% at 50% 50%,rgba(170,158,146,.28),rgba(170,158,146,.12) 55%,rgba(170,158,146,0) 100%)}
+@media (max-width:900px){.view{flex:none;height:62vh;min-height:380px}}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#cv:active{cursor:grabbing}
+
+.below{display:flex;flex-direction:column;align-items:center;gap:10px;position:relative;z-index:2}
+.quote{font-family:var(--f-serif);font-style:italic;font-size:26px;color:#A8A39C;margin:0;text-align:center;text-wrap:balance;max-width:34ch;min-height:1.3em}
+.quote .w{transition:color .25s}.quote .w.said,.quote.rest .w{color:#3E3A36}
+.timeline{width:min(640px,100%);display:flex;flex-direction:column;gap:6px}
+.ticks{position:relative;height:60px;display:flex;align-items:center;gap:3px;cursor:pointer}
+.ticks i{flex:1;min-width:2px;max-width:9px;background:#CFCBC5;border-radius:99px;transition:background .1s}
+.ticks i.on{background:var(--ink)}
+.ticks{justify-content:space-between}
+.ticks .head{position:absolute;bottom:0;width:2px;background:var(--rose);border-radius:1px;height:100%;transform:translateX(-1px);pointer-events:none;transition:left .06s linear}
+.ticks .head::before{content:"";position:absolute;top:-3px;left:-3px;width:8px;height:8px;border-radius:50%;background:var(--rose)}
+.tl-labels{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.playrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center}
+.pill{font:inherit;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:7px 14px;cursor:pointer}
+.pill svg{width:10px;height:10px;fill:currentColor}
+.meta{font-size:13px;color:var(--muted)}.meta b{color:var(--ink);font-weight:500}
+
+/* ---------- sidebar ---------- */
+.side{background:var(--card);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+@media (max-width:900px){.side{border-left:0;border-top:1px solid var(--line)}}
+.scroll{flex:1;overflow-y:auto;min-height:0}
+.sec{padding:20px 22px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:12px}
+.sec h2{margin:0;font-family:var(--f-mono);font-weight:400;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.sub{font-size:12px;color:var(--muted);margin:0}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cards.three{grid-template-columns:1fr 1fr 1fr}
+.cards label{position:relative;display:block}
+.cards input{position:absolute;opacity:0}
+.cards span{display:block;height:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;background:var(--card)}
+.cards span b{display:block;font-weight:500;font-size:13.5px}
+.cards span small{display:block;color:var(--muted);font-size:11.5px;margin-top:1px}
+.cards input:checked+span{background:var(--rose-wash);border-color:var(--rose-line)}
+.cards input:focus-visible+span,.sw input:focus-visible+span,.chip:focus-visible,.pill:focus-visible,.dl:focus-visible,.drop:focus-within{outline:2px solid var(--ink);outline-offset:2px}
+.cards input:disabled+span{opacity:.4;cursor:not-allowed}
+.drop{display:block;border:1px dashed #CFCBC5;border-radius:12px;padding:16px 12px;text-align:center;cursor:pointer;position:relative}
+.drop b{display:block;font-weight:500}
+.drop small{color:var(--muted);font-size:12px}
+.drop.over{border-color:var(--rose);background:var(--rose-wash)}
+.drop input{position:absolute;opacity:0;width:1px;height:1px}
+.file{display:flex;align-items:center;gap:12px}
+.file .wave{flex:none;width:44px;height:44px;border-radius:8px;background:var(--rose-wash);display:flex;align-items:center;justify-content:center;gap:2px;padding:0 8px}
+.file .wave i{flex:1;background:var(--rose);border-radius:99px}
+.toggle{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
+.toggle input{position:absolute;opacity:0}
+.toggle .knob{flex:none;width:34px;height:20px;border-radius:99px;background:#DEDAD4;position:relative;transition:background .15s;margin-top:1px}
+.toggle .knob::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .15s}
+.toggle input:checked+.knob{background:var(--ink)}
+.toggle input:checked+.knob::after{transform:translateX(14px)}
+.toggle input:focus-visible+.knob{outline:2px solid var(--ink);outline-offset:2px}
+.toggle b{display:block;font-weight:500;font-size:13px}
+.toggle small{display:block;color:var(--muted);font-size:12px}
+.file div{min-width:0}
+.file b{display:block;font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file small{color:var(--muted);font-size:12px}
+.status{font-size:12px;color:var(--muted);margin:0;min-height:0}
+.status.err{color:#B8382F}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:5px 11px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.sw{display:flex;flex-wrap:wrap;gap:8px}
+.sw label{position:relative}
+.sw input{position:absolute;opacity:0}
+.sw span{display:block;width:32px;height:32px;border-radius:8px;border:1px solid rgba(0,0,0,.08);cursor:pointer}
+.sw input:checked+span{box-shadow:0 0 0 2px var(--card),0 0 0 3.5px var(--ink)}
+.sw input:disabled+span{opacity:.35;cursor:not-allowed}
+.slider{display:grid;grid-template-columns:1fr auto;gap:0 10px;align-items:center}
+.slider label{font-size:13px}
+.slider output{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.slider input{grid-column:1/-1;width:100%;accent-color:var(--ink)}
+.slider input:disabled{opacity:.35}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:12px;color:var(--muted)}
+.field input{font:inherit;font-size:14px;border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:#fff;color:var(--ink)}
+.field input:focus{outline:2px solid var(--ink);outline-offset:0;border-color:transparent}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.foot{padding:16px 22px calc(16px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px;background:var(--card)}
+.dl{font:inherit;font-size:14px;font-weight:500;border:0;border-radius:12px;padding:14px;background:var(--ink);color:var(--card);cursor:pointer}
+.dl:disabled{background:#E9E7E3;color:var(--muted);cursor:not-allowed}
+.foot p{margin:0;font-size:12px;color:var(--muted);text-align:center}
+@media (prefers-reduced-motion: reduce){.ticks i,.ticks .head{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <main class="stage">
+    <div class="top">
+      <div class="title">
+        <h1>Voice Vase</h1>
+        <div class="stats">
+          <div class="stat"><b id="st-len">0:04</b><span>Seconds</span></div>
+          <div class="stat"><b id="st-h">180</b><span>mm tall</span></div>
+          <div class="stat"><b id="st-w">0</b><span>mm wide</span></div>
+        </div>
+      </div>
+      <div class="hint">drag to turn · scroll to zoom · press play to hear it rise</div>
+      <div style="width:1px" aria-hidden="true"></div>
+    </div>
+
+    <div class="view"><canvas id="cv" aria-label="3D preview of the vase"></canvas></div>
+
+    <div class="below">
+      <p class="quote" id="quote">“Good morning, love”</p>
+      <div class="timeline">
+        <div class="ticks" id="ticks" role="button" tabindex="0" aria-label="Play the message"><span class="head" id="head"></span></div>
+        <div class="tl-labels"><span>Base</span><span id="tl-mid">Their voice</span><span>Rim</span></div>
+      </div>
+      <div class="playrow">
+        <button class="pill" id="play"><svg viewBox="0 0 10 10" id="playIcon"><path d="M1.5 0.5v9l7.5-4.5z"/></svg><span id="playLabel">Play the message</span></button>
+        <span class="meta"><b id="m-shape">Vase</b> · <span id="m-dur">0:04</span></span>
+      </div>
+    </div>
+  </main>
+
+  <aside class="side" aria-label="Settings">
+    <div class="scroll">
+      <section class="sec">
+        <h2>Voice note</h2>
+        <label class="drop" id="drop">
+          <input type="file" id="file" accept="audio/*,.m4a,.mp3,.wav,.aac,.ogg,.caf,.opus">
+          <b>Drop a voice note or click to upload</b>
+          <small>The one they sent you · m4a, mp3 or wav</small>
+        </label>
+        <div class="file">
+          <span class="wave" id="miniWave" aria-hidden="true"></span>
+          <div><b id="fileName">Example · Good morning, love</b><small id="fileMeta">0:04 · example</small></div>
+        </div>
+        <p class="status" id="status" role="status"></p>
+        <div class="sub">Or try an example</div>
+        <div class="chips" id="samples"></div>
+      </section>
+
+      <section class="sec">
+        <h2>Vessel</h2>
+        <div class="cards" id="shapes">
+          <label><input type="radio" name="shape" id="sh-bud" value="bud"><span><b>Bud vase</b><small>One perfect stem</small></span></label>
+          <label><input type="radio" name="shape" id="sh-vase" value="vase" checked><span><b>Vase</b><small>A small bouquet</small></span></label>
+          <label><input type="radio" name="shape" id="sh-bowl" value="bowl"><span><b>Dish</b><small>Rings, keys, notes</small></span></label>
+          <label><input type="radio" name="shape" id="sh-candle" value="candle"><span><b>Candle cup</b><small>Fits a tea light</small></span></label>
+        </div>
+      </section>
+
+      <section class="sec">
+        <h2>How the voice is carved</h2>
+        <div class="cards" id="pats">
+          <label><input type="radio" name="pat" id="pt-bars" value="bars" checked><span><b>Voice note</b><small>The message, stood upright</small></span></label>
+          <label><input type="radio" name="pat" id="pt-profile" value="profile"><span><b>Smooth</b><small>A soft silhouette</small></span></label>
+          <label><input type="radio" name="pat" id="pt-rim" value="rim"><span><b>Wrap</b><small>Once around the body</small></span></label>
+          <label><input type="radio" name="pat" id="pt-spiral" value="spiral"><span><b>Spiral</b><small>Coils up the side</small></span></label>
+        </div>
+      </section>
+
+      <section class="sec">
+        <h2>Glaze</h2>
+        <div class="sw" id="glazes"></div>
+      </section>
+
+      <section class="sec">
+        <h2>Flowers</h2>
+        <div class="cards" id="flowers">
+          <label><input type="radio" name="fl" id="fl-tulip" value="tulip" checked><span><b>Tulips</b><small>Soft and open</small></span></label>
+          <label><input type="radio" name="fl" id="fl-rose" value="rose"><span><b>Roses</b><small>The classic</small></span></label>
+          <label><input type="radio" name="fl" id="fl-lily" value="lily"><span><b>Lily of the valley</b><small>Tiny nodding bells</small></span></label>
+          <label><input type="radio" name="fl" id="fl-none" value="none"><span><b>Empty</b><small>Just the vase</small></span></label>
+        </div>
+        <div class="sw" id="blooms"></div>
+        <p class="sub">Flowers are only for the preview. The print is the vessel alone.</p>
+      </section>
+
+      <section class="sec">
+        <h2>Feel</h2>
+        <div class="slider"><label for="intensity">Voice depth</label><output id="o-intensity"></output><input type="range" id="intensity" min="0" max="100" value="60"></div>
+        <div class="slider"><label for="pitch">Bar spacing</label><output id="o-pitch"></output><input type="range" id="pitch" min="40" max="140" value="65"></div>
+        <div class="slider"><label for="smooth">Softness</label><output id="o-smooth"></output><input type="range" id="smooth" min="0" max="10" value="1"></div>
+        <div class="slider"><label for="twist">Twist</label><output id="o-twist"></output><input type="range" id="twist" min="0" max="360" value="0"></div>
+        <div class="slider"><label for="height">Height</label><output id="o-height"></output><input type="range" id="height" min="110" max="300" value="180"></div>
+        <div class="slider"><label for="wall">Wall</label><output id="o-wall"></output><input type="range" id="wall" min="12" max="50" value="24"></div>
+        <div class="sub">Printing</div>
+        <div class="cards three" id="printMode">
+          <label><input type="radio" name="pm" id="pm-full" value="full" checked><span><b>Full rings</b><small>Needs supports</small></span></label>
+          <label><input type="radio" name="pm" id="pm-fewer" value="fewer"><span><b>Bevelled</b><small>Supports on tips only</small></span></label>
+          <label><input type="radio" name="pm" id="pm-none" value="none"><span><b>No supports</b><small>45° undersides</small></span></label>
+        </div>
+      </section>
+
+      <section class="sec">
+        <h2>Their words</h2>
+        <div class="field"><label for="words">Type what they said</label><input id="words" maxlength="120" placeholder="Good morning, love"></div>
+        <p class="sub">Each word lights up as they say it when you press play.</p>
+      </section>
+    </div>
+    <div class="foot">
+      <button class="dl" id="export">↓ Download STL</button>
+      <p id="printTip">Watertight and sized in millimetres. Ready for your slicer.</p>
+    </div>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const N=256;
+const S={raw:null,duration:0,buffer:null,sample:'morning',words:'Good morning, love',shape:'vase',pat:'bars',intensity:60,smooth:1,twist:0,pitch:6.5,printMode:'full',height:180,wall:2.4,glaze:'porcelain',flower:'tulip',bloom:'blush'};
+const DEFAULT_H={bud:170,vase:180,bowl:55,candle:75};
+const H_RANGE={bud:[100,260],vase:[110,300],bowl:[30,110],candle:[50,140]}; // keeps each vessel in proportions that still read as that vessel
+const SHAPE_NAME={bud:'Bud vase',vase:'Vase',bowl:'Dish',candle:'Candle cup'};
+const GLAZES={porcelain:['Porcelain','#E7E1D8'],blush:['Blush','#E9C4C0'],celadon:['Celadon','#A9C2AE'],sky:['Sky','#B7CBE0'],butter:['Butter','#EBD592'],clay:['Terracotta','#C17452'],ink:['Ink','#2E3036']};
+const BLOOMS={blush:['Blush','#F2A7B4'],red:['Red','#C7283F'],white:['White','#F7F3EC'],blue:['Blue','#8FB3E6'],lilac:['Lilac','#C4A8DC']};
+
+/* ---------- example notes: synthetic loudness shapes ---------- */
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function bursts(list){const a=new Float32Array(N);for(const[c,w,h]of list){for(let i=0;i<N;i++){const x=(i/N-c)/w;a[i]+=h*Math.exp(-x*x)}}return a}
+function speech(seed,words,soft){const r=rng(seed);const L=[];let p=.04;for(let k=0;k<words;k++){const syl=1+Math.floor(r()*3);for(let s=0;s<syl;s++){L.push([p,.013+r()*.015+(soft||0),.4+r()*.6]);p+=.03+r()*.02}p+=.025+r()*.05}const sc=.94/p;return bursts(L.map(([c,w,h])=>[c*sc,w*sc,h]))}
+const SAMPLES={
+  morning:{label:'Good morning, love',chip:'Good morning',dur:4,make:()=>speech(3,4)},
+  miss:{label:'I miss you. Come home soon',chip:'I miss you',dur:5,make:()=>speech(11,6,.006)},
+  anniv:{label:'Happy anniversary, my favorite person',chip:'Anniversary',dur:6,make:()=>speech(29,7)},
+  song:{label:'A little song, just for you',chip:'A little song',dur:8,make:()=>bursts([[.07,.035,.55],[.15,.03,.6],[.26,.06,.9],[.4,.055,.75],[.54,.06,.95],[.71,.1,1],[.87,.045,.55],[.95,.03,.4]])},
+  night:{label:'Goodnight, sleep well, I love you',chip:'Goodnight',dur:12,make:()=>speech(47,14,.004)}
+};
+
+/* ---------- envelope helpers ---------- */
+function normalize(a){let m=0;for(const v of a)m=Math.max(m,v);const o=new Float32Array(a.length);for(let i=0;i<a.length;i++)o[i]=m?Math.sqrt(a[i]/m):0;return o}
+function fromBuffer(buf){
+  const len=buf.length,chs=buf.numberOfChannels,bins=1024,step=Math.max(1,Math.floor(len/bins)),rms=new Float32Array(bins);
+  for(let b=0;b<bins;b++){let s=0,c=0;for(let ch=0;ch<chs;ch++){const d=buf.getChannelData(ch);for(let i=b*step;i<Math.min(len,(b+1)*step);i+=4){s+=d[i]*d[i];c++}}rms[b]=c?Math.sqrt(s/c):0}
+  let peak=0;for(const v of rms)peak=Math.max(peak,v);if(peak<1e-5)throw new Error('silent');
+  let a=0,z=bins-1;while(a<z&&rms[a]<peak*.08)a++;while(z>a&&rms[z]<peak*.08)z--;
+  const out=new Float32Array(N);for(let i=0;i<N;i++){const x=a+(z-a)*i/(N-1),i0=Math.floor(x),f=x-i0;out[i]=rms[i0]*(1-f)+(rms[Math.min(bins-1,i0+1)]||0)*f}
+  return {env:normalize(out),start:a/bins*buf.duration,end:(z+1)/bins*buf.duration};
+}
+function smoothed(a,passes,cyclic){let x=Float32Array.from(a);for(let p=0;p<passes;p++){const y=new Float32Array(x.length),n=x.length;for(let i=0;i<n;i++){const l=cyclic?x[(i-1+n)%n]:x[Math.max(0,i-1)],r=cyclic?x[(i+1)%n]:x[Math.min(n-1,i+1)];y[i]=(l+2*x[i]+r)/4}x=y}return x}
+function cyclicize(a){const x=Float32Array.from(a),n=x.length,k=20;for(let j=0;j<k;j++){const f=(j+1)/(k+1);x[n-k+j]=x[n-k+j]*(1-f)+x[0]*f}return x}
+function sampler(a,wrap){const n=a.length;return u=>{if(wrap){u=((u%1)+1)%1;const x=u*n,i=Math.floor(x)%n,f=x-Math.floor(x);return a[i]*(1-f)+a[(i+1)%n]*f}u=Math.min(1,Math.max(0,u));const x=u*(n-1),i=Math.floor(x),f=x-i;return a[i]*(1-f)+a[Math.min(n-1,i+1)]*f}}
+
+/* ---------- silhouettes ---------- */
+function curve(pts){const n=pts.length-1;return t=>{const x=Math.min(.9999,Math.max(0,t))*n,i=Math.floor(x),f=x-i;const p0=pts[Math.max(0,i-1)],p1=pts[i],p2=pts[i+1],p3=pts[Math.min(n,i+2)];return .5*(2*p1+(-p0+p2)*f+(2*p0-5*p1+4*p2-p3)*f*f+(-p0+3*p1-3*p2+p3)*f*f*f)}}
+const SHAPES={
+  bud:{aspect:3.6,core:.36,prof:curve([.8,.98,1,.86,.58,.36,.3,.31,.4])},
+  vase:{aspect:3.0,core:.48,prof:curve([.58,.84,.97,.92,.72,.5,.43,.46,.58])},
+  bowl:{aspect:.62,core:.62,prof:curve([.5,.72,.86,.95,1,1.02])},
+  candle:{aspect:1.55,core:.68,prof:curve([.9,.93,.95,.95,.93,.9])}
+};
+const holdsFlowers=()=>S.shape==='bud'||S.shape==='vase';
+function barCount(){return Math.max(6,Math.min(80,Math.round(S.height/S.pitch)))}
+function barAmps(B){const s=sampler(smoothed(S.raw,S.smooth*2,false),false),out=[];for(let k=0;k<B;k++){let m=0;for(let q=0;q<8;q++)m=Math.max(m,s((k+q/8)/B));out.push(Math.max(.12,m))}return out}
+
+/* ---------- vessel mesh (mm, Y up) ---------- */
+function build(forPrint){
+  const sh=SHAPES[S.shape],H=S.height,R0=DEFAULT_H[S.shape]/sh.aspect*Math.pow(H/DEFAULT_H[S.shape],.3),wall=S.wall,base=Math.min(3,H*.05),D=S.intensity/100;
+  const ss=(a,b,x)=>{x=Math.min(1,Math.max(0,(x-a)/(b-a)));return x*x*(3-2*x)};
+  let rf,B=0,amps=null,coreR=0;
+  if(S.pat==='bars'){
+    // each bar of the voice note becomes a rounded ring; the axis is the waveform's centre line
+    B=barCount();amps=barAmps(B);
+    const P=H/B,h=.32*P,core=R0*sh.core;coreR=core;const e=Math.min(.32,S.twist/280),tw=S.twist*Math.PI/180;
+    rf=(t,th)=>{const y=t*B,k=Math.min(B-1,Math.max(0,Math.floor(y))),dy=Math.abs(y-k-.5)*P;
+      let a=amps[k]*R0*D*1.15;if(e>0)a*=1+e*Math.cos(2*(th-t*tw));
+      const c=Math.min(h,a);if(dy>h)return core;if(dy<=h-c)return core+a;const dd=dy-(h-c);return core+a-c+Math.sqrt(Math.max(0,c*c-dd*dd))};
+  }else{
+    const A=D*.55,lin=sampler(smoothed(S.raw,S.smooth*3,false),false),cyc=sampler(smoothed(cyclicize(S.raw),S.smooth*3,true),true),turns=1+S.twist/90,lean=S.twist/360;
+    rf=(t,th)=>{const u=th/(Math.PI*2);let m;if(S.pat==='profile')m=lin(t);else if(S.pat==='rim')m=cyc(u+lean*t);else m=cyc(u+turns*t);
+      return R0*sh.prof(t)*(1+A*(m-.3)*ss(0,.07,t))};
+  }
+  const RINGS=S.pat==='bars'?Math.min(1100,Math.max(260,B*22)):180,SEG=S.pat==='bars'?128:160;
+  const TO=new Float32Array((RINGS+1)*SEG),TI=new Float32Array((RINGS+1)*SEG),step=H/RINGS;
+  for(let i=0;i<=RINGS;i++)for(let j=0;j<SEG;j++)TO[i*SEG+j]=Math.max(wall+2,rf(i/RINGS,j/SEG*Math.PI*2));
+  const slope=S.printMode==='none'?1:S.printMode==='fewer'?1.6:0; // outward growth allowed per mm of height: 1 = 45°, 1.6 ≈ 58° (most printers bridge this with only light tip supports)
+  // fill downward from each ring's tip so its underside becomes a sloped skirt; ring depth is kept, only the gaps below fill in
+  if(slope)for(let i=RINGS-1;i>=0;i--)for(let j=0;j<SEG;j++){const k=i*SEG+j;TO[k]=Math.max(TO[k],TO[k+SEG]-step*slope)}
+  for(let k=0;k<TO.length;k++)TI[k]=Math.max(1,TO[k]-wall);
+  if(forPrint&&S.pat==='bars')TI.fill(Math.max(4,coreR-wall)); // solid rings, straight smooth bore: no hidden overhangs inside
+  if(slope)for(let i=RINGS-1;i>=0;i--)for(let j=0;j<SEG;j++){const k=i*SEG+j;TI[k]=Math.min(TI[k],TI[k+SEG]+step*slope)} // no inner ceilings
+  const look=T=>(t,th)=>{const x=Math.min(RINGS,Math.max(0,t*RINGS)),i=Math.min(RINGS-1,Math.floor(x)),f=x-i;let u=((th/(Math.PI*2))%1+1)%1*SEG;const j=Math.floor(u)%SEG,g=u-Math.floor(u),j1=(j+1)%SEG;
+    const a=T[i*SEG+j]*(1-g)+T[i*SEG+j1]*g,b=T[(i+1)*SEG+j]*(1-g)+T[(i+1)*SEG+j1]*g;return a*(1-f)+b*f};
+  const radius=look(TO),rin=look(TI);
+  const pos=[],idx=[];let maxR=0;for(const v of TO)maxR=Math.max(maxR,v);
+  const add=(x,y,z)=>{pos.push(x,y,z);return pos.length/3-1};
+  const ring=(y,rfn)=>{const s=pos.length/3;for(let j=0;j<SEG;j++){const th=j/SEG*Math.PI*2,r=rfn(j,th);add(r*Math.cos(th),y,r*Math.sin(th))}return s};
+  // rows = [{lo,hi}] ring indices; where the profile turns sharply (a ring meeting the stem) the row is doubled
+  // so each side keeps its own normal and the edge stays crisp instead of smearing
+  const bend=(T,i)=>{if(i<=0||i>=RINGS)return false;let m=0;for(let j=0;j<SEG;j+=SEG/8){const a1=Math.atan2(T[i*SEG+j]-T[(i-1)*SEG+j],step),a2=Math.atan2(T[(i+1)*SEG+j]-T[i*SEG+j],step);m=Math.max(m,Math.abs(a1-a2))}return m>.6};
+  const row=(y,fn,crease)=>{const lo=ring(y,fn);return {lo,hi:crease?ring(y,fn):lo}};
+  const quads=(rows,out)=>{for(let i=0;i<rows.length-1;i++)for(let j=0;j<SEG;j++){const j1=(j+1)%SEG,a=rows[i].hi+j,b=rows[i].hi+j1,c=rows[i+1].lo+j,d=rows[i+1].lo+j1;out?idx.push(a,c,b,b,c,d):idx.push(a,b,c,b,d,c)}};
+  const outer=[];for(let i=0;i<=RINGS;i++)outer.push(row(i*step,j=>TO[i*SEG+j],bend(TO,i)));quads(outer,true);
+  const i0=Math.floor(base/step)+1,inner=[row(base,(j,th)=>rin(base/H,th),false)];for(let i=i0;i<=RINGS;i++)inner.push(row(i*step,j=>TI[i*SEG+j],bend(TI,i)));quads(inner,false);
+  const ro=ring(H,j=>TO[RINGS*SEG+j]),ri=ring(H,j=>TI[RINGS*SEG+j]);
+  for(let j=0;j<SEG;j++){const j1=(j+1)%SEG;idx.push(ro+j,ri+j,ro+j1,ro+j1,ri+j,ri+j1)}
+  const bo=ring(0,j=>TO[j]),bc=add(0,0,0);for(let j=0;j<SEG;j++)idx.push(bc,bo+j,bo+(j+1)%SEG);
+  const fi=ring(base,(j,th)=>rin(base/H,th)),fc=add(0,base,0);for(let j=0;j<SEG;j++)idx.push(fc,fi+(j+1)%SEG,fi+j);
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();
+  let neck=1e9;for(let i=Math.round(RINGS*.55);i<=RINGS;i++)for(let j=0;j<SEG;j+=8)neck=Math.min(neck,TI[i*SEG+j]);
+  let floorR=1e9;for(let j=0;j<SEG;j+=8)floorR=Math.min(floorR,rin(.05,j/SEG*Math.PI*2));
+  return {g,maxR,H,base,radius,neck:Math.max(2,neck),floorR,tris:idx.length/3,B,amps};
+}
+
+/* ---------- scene ---------- */
+const cv=$('cv'),view=cv.parentElement;
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));renderer.setClearColor(0,0);renderer.outputEncoding=THREE.sRGBEncoding;
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(30,1,1,8000);
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
+// a small photo studio for reflections: warm grey room, a big overhead softbox and two side strips
+{const pm=new THREE.PMREMGenerator(renderer),env=new THREE.Scene();
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(10,10,10),new THREE.MeshBasicMaterial({color:new THREE.Color(.16,.15,.14),side:THREE.BackSide})));
+  const panel=(w,h,x,y,z,i)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:new THREE.Color(i,i*.98,i*.95),side:THREE.DoubleSide}));m.position.set(x,y,z);m.lookAt(0,0,0);env.add(m)};
+  panel(5,3,0,4.9,.6,4);panel(1.6,5,-4.9,.6,2,3);panel(.8,5,4.9,.4,-1.6,1.8);panel(8,.6,0,-.6,-4.9,.6);
+  scene.environment=pm.fromScene(env,.03).texture;pm.dispose()}
+scene.add(new THREE.HemisphereLight(0xffffff,0x5a5048,.22));
+const key=new THREE.DirectionalLight(0xfff1e4,1.35);key.position.set(-260,520,380);scene.add(key);
+const rim=new THREE.DirectionalLight(0xe9eeff,.3);rim.position.set(420,260,-420);scene.add(rim);
+const mat=new THREE.MeshPhysicalMaterial({color:GLAZES.porcelain[1],roughness:.34,metalness:0,clearcoat:.75,clearcoatRoughness:.16,envMapIntensity:.9});
+const shadowTex=(()=>{const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d'),gr=x.createRadialGradient(64,64,0,64,64,64);gr.addColorStop(0,'rgba(60,40,30,.42)');gr.addColorStop(.45,'rgba(60,40,30,.16)');gr.addColorStop(1,'rgba(60,40,30,0)');x.fillStyle=gr;x.fillRect(0,0,128,128);return new THREE.CanvasTexture(c)})();
+const shadow=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:shadowTex,transparent:true,depthWrite:false}));
+shadow.rotation.x=-Math.PI/2;shadow.position.y=.2;scene.add(shadow);
+const holder=new THREE.Group();scene.add(holder);
+const flowerGroup=new THREE.Group();holder.add(flowerGroup);
+let mesh=null,cur=null,lastFit='';
+
+// glowing band that climbs the vessel while the message plays
+const BAND=160;const bandGeo=new THREE.BufferGeometry();bandGeo.setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array(BAND*2*3),3));
+{const ix=[];for(let j=0;j<BAND;j++){const j1=(j+1)%BAND;ix.push(j*2,j*2+1,j1*2,j1*2,j*2+1,j1*2+1)}bandGeo.setIndex(ix)}
+const band=new THREE.Mesh(bandGeo,new THREE.MeshBasicMaterial({color:0xD4677B,side:THREE.DoubleSide,transparent:true,opacity:.95}));band.visible=false;holder.add(band);
+function placeBand(p){
+  if(!cur)return;const t=Math.min(.995,Math.max(.01,p)),y=t*cur.H,hw=Math.max(.9,cur.H*.006),a=bandGeo.attributes.position.array;
+  for(let j=0;j<BAND;j++){const th=j/BAND*Math.PI*2,r=cur.radius(t,th)+.5,x=r*Math.cos(th),z=r*Math.sin(th);a.set([x,y-hw,z,x,y+hw,z],j*6)}
+  bandGeo.attributes.position.needsUpdate=true;bandGeo.computeBoundingSphere();
+}
+
+const controls=new THREE.OrbitControls(camera,cv);controls.enableDamping=true;controls.enablePan=false;controls.minPolarAngle=.2;controls.maxPolarAngle=Math.PI*.6;
+let idleAt=0;controls.addEventListener('start',()=>{idleAt=performance.now()+4000});
+
+/* ---------- flowers (preview only) ---------- */
+const flowerMats={stem:new THREE.MeshStandardMaterial({color:0x6F8B55,roughness:.7}),leaf:new THREE.MeshStandardMaterial({color:0x7E9B5E,roughness:.6,side:THREE.DoubleSide}),
+  bloom:new THREE.MeshStandardMaterial({color:BLOOMS.blush[1],roughness:.55,side:THREE.DoubleSide}),center:new THREE.MeshStandardMaterial({color:0xE2B33C,roughness:.6})};
+const cupGeo=new THREE.LatheGeometry([[0,0],[3.2,.8],[5.6,4],[6.6,9],[6.3,14],[5,18.5]].map(p=>new THREE.Vector2(p[0],p[1])),24);
+const petalGeo=new THREE.SphereGeometry(1,12,8);
+// a lily-of-the-valley bell: round shoulder, waisted body, six-point flared lip; opening faces down (-y)
+const bellGeo=(()=>{const pts=[[0,0],[1.7,-.25],[2.9,-1.3],[3.4,-3],[3.3,-4.3],[3.7,-5],[4.5,-5.35]].map(p=>new THREE.Vector2(p[0],p[1]));
+  const g=new THREE.LatheGeometry(pts,36),pa=g.attributes.position;
+  for(let i=0;i<pa.count;i++){const x=pa.getX(i),y=pa.getY(i),z=pa.getZ(i);if(y<-4.6){const th=Math.atan2(z,x),k=1+.12*Math.cos(6*th);pa.setX(i,x*k);pa.setZ(i,z*k);pa.setY(i,y+.35*Math.max(0,Math.cos(6*th)))}}
+  g.computeVertexNormals();return g})();
+const lilyLeafGeo=(()=>{const g=new THREE.SphereGeometry(1,16,10);g.scale(5.5,.4,26);g.translate(0,0,24);return g})();
+const leafGeo=(()=>{const g=new THREE.SphereGeometry(1,14,8);g.scale(3.2,.35,12);g.translate(0,0,11);return g})();
+const up=new THREE.Vector3(0,1,0);
+function clearFlowers(){while(flowerGroup.children.length){flowerGroup.remove(flowerGroup.children[0])}}
+function buildFlowers(){
+  clearFlowers();cur.flowerTop=cur.H;
+  if(S.flower==='none'||!holdsFlowers())return;
+  const H=cur.H,F=DEFAULT_H[S.shape],s=F/180,r=rng(5+S.shape.length),count=S.shape==='bud'?(S.flower==='lily'?3:1):(S.flower==='lily'?8:5);
+  let top=H;
+  for(let k=0;k<count;k++){
+    const a=k/count*Math.PI*2+r()*.6,single=count===1;
+    const fr=Math.min(cur.floorR*.4,cur.neck*.9),nr=cur.neck*.5;
+    const spread=single?F*.02:F*(.1+r()*.16),rise=F*(single?.55:.32+r()*.3);
+    const pts=[new THREE.Vector3(Math.cos(a+2)*fr*r(),cur.base+1,Math.sin(a+2)*fr*r()),
+      new THREE.Vector3(Math.cos(a)*nr*.4,H*.72,Math.sin(a)*nr*.4),
+      new THREE.Vector3(Math.cos(a)*nr,H*1.02,Math.sin(a)*nr),
+      new THREE.Vector3(Math.cos(a)*spread*.7,H+rise*.6,Math.sin(a)*spread*.7),
+      new THREE.Vector3(Math.cos(a)*spread,H+rise,Math.sin(a)*spread)];
+    if(S.flower==='lily')pts.push(new THREE.Vector3(Math.cos(a)*(spread+F*.1),H+rise-F*.02,Math.sin(a)*(spread+F*.1))); // arching tip
+    const c=new THREE.CatmullRomCurve3(pts);
+    flowerGroup.add(new THREE.Mesh(new THREE.TubeGeometry(c,48,Math.max(.9,1.4*s),6,false),flowerMats.stem));
+    top=Math.max(top,H+rise);
+    if(S.flower==='lily'){
+      // a row of bells hanging from the arch, largest first
+      const n=7,side=new THREE.Vector3(Math.cos(a+1.3),0,Math.sin(a+1.3));
+      for(let b=0;b<n;b++){const u=.6+b/(n-1)*.38,p=c.getPoint(u),sz=s*(1-b*.07)*(S.shape==='bud'?1.2:1);
+        const hang=p.clone().add(side.clone().multiplyScalar((b%2?-1:1)*3*s)).add(new THREE.Vector3(0,-4.5*s,0));
+        flowerGroup.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(p,p.clone().lerp(hang,.5).add(new THREE.Vector3(0,2*s,0)),hang),6,.35*s,4,false),flowerMats.stem));
+        const bell=new THREE.Mesh(bellGeo,flowerMats.bloom);bell.position.copy(hang);bell.scale.setScalar(sz);bell.rotation.y=b;flowerGroup.add(bell)}
+      if(k%2===0){const lp=c.getPoint(.34);[a+.5,a-.6].forEach((ang,i)=>{const leaf=new THREE.Mesh(lilyLeafGeo,flowerMats.leaf);leaf.position.copy(lp);leaf.scale.setScalar(s*(1-i*.15));
+        leaf.lookAt(lp.clone().add(new THREE.Vector3(Math.cos(ang)*.45,1,Math.sin(ang)*.45)));flowerGroup.add(leaf)})}
+      continue;
+    }
+    const tip=c.getPoint(1),tan=c.getTangent(1).normalize(),q=new THREE.Quaternion().setFromUnitVectors(up,tan);
+    const head=new THREE.Group();head.position.copy(tip);head.quaternion.copy(q);head.scale.setScalar(s*(S.shape==='bud'?1.35:1));
+    if(S.flower==='tulip'){const m=new THREE.Mesh(cupGeo,flowerMats.bloom);m.scale.set(1,1.05,1);head.add(m);for(let p=0;p<3;p++){const pm=new THREE.Mesh(petalGeo,flowerMats.bloom);pm.scale.set(3.6,9,1.6);const ang=p/3*Math.PI*2;pm.position.set(Math.cos(ang)*3.8,10,Math.sin(ang)*3.8);pm.rotation.set(Math.sin(ang)*.25,-ang,-Math.cos(ang)*.25);head.add(pm)}}
+    else if(S.flower==='rose'){[1,.78,.56,.36].forEach((k2,i)=>{const m=new THREE.Mesh(cupGeo,flowerMats.bloom);m.scale.set(k2*1.15,k2*.85,k2*1.15);m.rotation.y=i*1.3;m.position.y=(1-k2)*4;head.add(m)});const b=new THREE.Mesh(petalGeo,flowerMats.bloom);b.scale.set(2.4,3,2.4);b.position.y=10;head.add(b)}
+    flowerGroup.add(head);
+    const lp=c.getPoint(.7),lt=c.getTangent(.7);const leaf=new THREE.Mesh(leafGeo,flowerMats.leaf);leaf.position.copy(lp);leaf.scale.setScalar(s);
+    leaf.lookAt(lp.clone().add(new THREE.Vector3(Math.cos(a+1.2),.9,Math.sin(a+1.2))));flowerGroup.add(leaf);
+  }
+  cur.flowerTop=top+14*s;
+}
+
+function fit(force){
+  const k=S.shape+'|'+S.height+'|'+(S.flower!=='none'&&holdsFlowers());if(!force&&k===lastFit)return;lastFit=k;
+  const topY=cur.flowerTop,size=Math.max(topY*1.08,cur.maxR*2.9),d=size*2.05;
+  controls.target.set(0,topY*.44,0);camera.position.set(d*.66,topY*.44+d*.28,d*.74);
+  controls.minDistance=size*.7;controls.maxDistance=size*5;controls.update();
+}
+function rebuild(){
+  if(!S.raw)return;
+  cur=build();
+  if(mesh){holder.remove(mesh);mesh.geometry.dispose()}
+  mesh=new THREE.Mesh(cur.g,mat);holder.add(mesh);
+  buildFlowers();
+  const sc=cur.maxR*2.9;shadow.scale.set(sc,sc,1);
+  fit(false);stats();drawTicks();
+  $('printTip').textContent=S.pat==='bars'&&S.printMode==='full'?'The rings stick out sideways, so turn on tree supports in your slicer. Sized in mm.':S.printMode==='fewer'?'Bevelled rings: turn on tree supports with a 30° threshold; only the outer tips need them. Ready for your slicer.':'Watertight and sized in millimetres. Ready for your slicer.';
+}
+function resize(){const w=view.clientWidth,h=view.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/Math.max(1,h);camera.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(view);resize();
+const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let lt=performance.now();
+(function loop(now){const dt=Math.min(.05,(now-lt)/1000);lt=now;if(!reduce&&now>idleAt)holder.rotation.y+=dt*.28;controls.update();renderer.render(scene,camera);requestAnimationFrame(loop)})(lt);
+
+/* ---------- readouts ---------- */
+const fmt=s=>{s=Math.round(s);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+function stats(){$('st-len').textContent=fmt(S.duration);$('st-h').textContent=S.height;$('st-w').textContent=Math.round(cur.maxR*2);$('m-shape').textContent=SHAPE_NAME[S.shape];$('m-dur').textContent=fmt(S.duration)+' of voice'}
+let wordEls=[];
+function tag(){
+  const w=$('words').value.trim()||S.words,q=$('quote');q.innerHTML='';q.classList.add('rest');
+  const parts=w?w.split(/\s+/):[];
+  wordEls=parts.map((t,i)=>{const sp=document.createElement('span');sp.className='w';sp.textContent=(i===0?'“':'')+t+(i===parts.length-1?'”':'');q.appendChild(sp);if(i<parts.length-1)q.appendChild(document.createTextNode(' '));return sp});
+}
+$('words').addEventListener('input',tag);
+// words light up in step with how much of the speech has been heard, not clock time
+function showWords(p){
+  if(!wordEls.length||!S.raw)return;const n=S.raw.length;let tot=0,sofar=0;
+  for(let i=0;i<n;i++){tot+=S.raw[i];if(i<p*n)sofar+=S.raw[i]}
+  const k=Math.ceil((sofar/(tot||1))*wordEls.length-.15);$('quote').classList.remove('rest');wordEls.forEach((el,i)=>el.classList.toggle('said',i<k));
+}
+
+/* ---------- timeline ---------- */
+const ticksEl=$('ticks'),head=$('head');let tickEls=[];
+function drawTicks(){
+  const s=sampler(S.raw,false);let vals;
+  if(S.pat==='bars'&&cur&&cur.amps)vals=cur.amps; // exactly the bars carved into the vase
+  else{vals=[];for(let i=0;i<60;i++){let m=0;for(let k=0;k<5;k++)m=Math.max(m,s((i+k/5)/60));vals.push(m)}}
+  tickEls.forEach(el=>el.remove());tickEls=vals.map(v=>{const el=document.createElement('i');el.style.height=Math.max(8,v*100)+'%';ticksEl.insertBefore(el,head);return el});
+  const mw=$('miniWave');mw.innerHTML='';for(let i=0;i<7;i++){const b=document.createElement('i');b.style.height=Math.max(14,s((i+.5)/7)*80)+'%';mw.appendChild(b)}
+  setProgress(0)}
+function setProgress(p){const n=tickEls.length;tickEls.forEach((el,i)=>el.classList.toggle('on',i/n<p));head.style.left=(p*100)+'%';head.hidden=p<=0}
+function patLabel(){$('tl-mid').textContent=S.pat==='bars'?'Their voice, bar by bar':S.pat==='profile'?'Their voice, rising':S.pat==='rim'?'Their voice, wrapped around':'Their voice, spiralling up'}
+
+/* ---------- playback ---------- */
+let actx=null,playing=null;
+function stopPlay(){if(playing){try{playing.stop()}catch(e){}playing=null}$('playIcon').innerHTML='<path d="M1.5 0.5v9l7.5-4.5z"/>';$('playLabel').textContent='Play the message';band.visible=false;setProgress(0);$('quote').classList.add('rest')}
+function play(){
+  if(playing){stopPlay();return}
+  actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume();
+  const t0=actx.currentTime+.05;let src,offset=0;
+  if(S.buffer){src=actx.createBufferSource();src.buffer=S.buffer;src.connect(actx.destination);offset=S.trimStart||0;src.start(t0,offset,S.duration)}
+  else{ // hum the example's shape so there is something to hear
+    const o=actx.createOscillator(),f=actx.createBiquadFilter(),g=actx.createGain();o.type='triangle';o.frequency.value=220;f.type='lowpass';f.frequency.value=1200;
+    const cv2=new Float32Array(S.raw.length);for(let i=0;i<cv2.length;i++)cv2[i]=S.raw[i]*.25;
+    g.gain.setValueAtTime(0,t0);g.gain.setValueCurveAtTime(cv2,t0,S.duration);
+    const lfo=actx.createOscillator(),lg=actx.createGain();lfo.frequency.value=2.6;lg.gain.value=40;lfo.connect(lg).connect(o.frequency);lfo.start(t0);lfo.stop(t0+S.duration);
+    o.connect(f).connect(g).connect(actx.destination);o.start(t0);o.stop(t0+S.duration);src=o;
+  }
+  playing=src;src.onended=()=>{if(playing===src)stopPlay()};
+  $('playIcon').innerHTML='<path d="M1 0.5h3v9H1zM6 0.5h3v9H6z"/>';$('playLabel').textContent='Pause';
+  band.visible=true;
+  (function tick(){if(playing!==src)return;const p=Math.min(1,Math.max(0,(actx.currentTime-t0)/S.duration));setProgress(p);placeBand(p);showWords(p);requestAnimationFrame(tick)})();
+}
+$('play').addEventListener('click',play);
+ticksEl.addEventListener('click',play);ticksEl.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();play()}});
+
+/* ---------- loading notes ---------- */
+function setNote(raw,duration,title,meta,buffer,trimStart){
+  stopPlay();S.raw=raw;S.duration=duration;S.buffer=buffer||null;S.trimStart=trimStart||0;
+  $('fileName').textContent=title;$('fileMeta').textContent=meta;rebuild();tag();
+}
+function setStatus(msg,err){const s=$('status');s.textContent=msg;s.classList.toggle('err',!!err)}
+const samplesEl=$('samples');
+Object.entries(SAMPLES).forEach(([k,v])=>{const b=document.createElement('button');b.type='button';b.className='chip';b.id='s-'+k;b.textContent=v.chip;
+  b.addEventListener('click',()=>{S.sample=k;S.words=v.label;markSamples();setStatus('');setNote(normalize(v.make()),v.dur,'Example · '+v.label,fmt(v.dur)+' · example')});samplesEl.appendChild(b)});
+function markSamples(){[...samplesEl.children].forEach(b=>b.setAttribute('aria-pressed',b.id==='s-'+S.sample))}
+async function loadFile(file){
+  if(!file)return;setStatus('Listening to '+file.name+'…');
+  try{
+    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    const ab=await file.arrayBuffer();
+    const buf=await new Promise((res,rej)=>{const p=actx.decodeAudioData(ab,res,rej);if(p&&p.then)p.then(res,rej)});
+    const r=fromBuffer(buf),dur=Math.max(.3,r.end-r.start);
+    S.sample=null;S.words='';markSamples();setStatus('');
+    setNote(r.env,dur,file.name,fmt(dur)+' of voice · silence trimmed',buf,r.start);
+  }catch(e){setStatus(e&&e.message==='silent'?'That recording seems to be silent. Try another one.':'This browser couldn’t open that file. Re-save it as .m4a or .mp3 and try again.',true)}
+}
+$('file').addEventListener('change',e=>loadFile(e.target.files[0]));
+const drop=$('drop');
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop',e=>loadFile(e.dataTransfer.files[0]));
+
+/* ---------- controls ---------- */
+function swatches(el,set,name,sel,onPick){Object.entries(set).forEach(([k,[label,hex]])=>{const l=document.createElement('label');l.title=label;
+  l.innerHTML=`<input type="radio" name="${name}" id="${name}-${k}" value="${k}" ${k===sel?'checked':''} aria-label="${label}"><span style="background:${hex}"></span>`;el.appendChild(l)});
+  el.addEventListener('change',e=>onPick(e.target.value))}
+swatches($('glazes'),GLAZES,'glaze',S.glaze,v=>{S.glaze=v;mat.color.set(GLAZES[v][1])});
+swatches($('blooms'),BLOOMS,'bloom',S.bloom,v=>{S.bloom=v;flowerMats.bloom.color.set(BLOOMS[v][1])});
+function flowerAvail(){const ok=holdsFlowers();$('flowers').querySelectorAll('input').forEach(i=>i.disabled=!ok);$('blooms').querySelectorAll('input').forEach(i=>i.disabled=!ok||S.flower==='none')}
+$('shapes').addEventListener('change',e=>{S.shape=e.target.value;S.height=DEFAULT_H[S.shape];const hs=$('height');hs.min=H_RANGE[S.shape][0];hs.max=H_RANGE[S.shape][1];hs.value=S.height;flowerAvail();outs();rebuild()});
+$('pats').addEventListener('change',e=>{S.pat=e.target.value;outs();patLabel();rebuild()});
+$('flowers').addEventListener('change',e=>{S.flower=e.target.value;flowerAvail();buildFlowers();fit(false)});
+function outs(){
+  $('o-intensity').textContent=S.intensity+'%';$('o-smooth').textContent=S.smooth;
+  $('o-twist').textContent=S.pat==='spiral'?(1+S.twist/90).toFixed(1)+' turns':S.pat==='profile'?'—':S.twist+'°';
+  $('o-pitch').textContent=S.pat==='bars'?S.pitch.toFixed(1)+' mm · '+barCount()+' bars':'—';$('pitch').disabled=S.pat!=='bars';
+  $('o-height').textContent=S.height+' mm';$('o-wall').textContent=S.wall.toFixed(1)+' mm';$('twist').disabled=S.pat==='profile';
+}
+$('printMode').addEventListener('change',e=>{S.printMode=e.target.value;rebuild()});
+let raf=0;const later=()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(rebuild)};
+[['intensity',v=>S.intensity=+v],['smooth',v=>S.smooth=+v],['twist',v=>S.twist=+v],['height',v=>S.height=+v],['wall',v=>S.wall=v/10],['pitch',v=>S.pitch=v/10]].forEach(([id,set])=>$(id).addEventListener('input',e=>{set(e.target.value);outs();later()}));
+
+/* ---------- STL in a zip ---------- */
+function stl(g){
+  const p=g.attributes.position.array,ix=g.index.array,n=ix.length/3,buf=new ArrayBuffer(84+n*50),dv=new DataView(buf);
+  const hdr='Voice Vase '+S.shape+' '+S.pat;for(let i=0;i<Math.min(80,hdr.length);i++)dv.setUint8(i,hdr.charCodeAt(i));
+  dv.setUint32(80,n,true);let o=84;const v=k=>[p[k*3],-p[k*3+2],p[k*3+1]];
+  for(let t=0;t<n;t++){const a=v(ix[t*3]),b=v(ix[t*3+1]),c=v(ix[t*3+2]);const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],wx=c[0]-a[0],wy=c[1]-a[1],wz=c[2]-a[2];
+    let nx=uy*wz-uz*wy,ny=uz*wx-ux*wz,nz=ux*wy-uy*wx;const l=Math.hypot(nx,ny,nz)||1;for(const x of [nx/l,ny/l,nz/l,...a,...b,...c]){dv.setFloat32(o,x,true);o+=4}o+=2}
+  return new Uint8Array(buf);
+}
+const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+function crc32(d){let c=0xFFFFFFFF;for(let i=0;i<d.length;i++)c=CRC[(c^d[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0}
+function zip(name,data){
+  const nb=new TextEncoder().encode(name),crc=crc32(data),sz=data.length;const put=(dv,list)=>list.forEach(([o,v,w])=>w===4?dv.setUint32(o,v,true):dv.setUint16(o,v,true));
+  const lh=new DataView(new ArrayBuffer(30));put(lh,[[0,0x04034b50,4],[4,20,2],[12,0x21,2],[14,crc,4],[18,sz,4],[22,sz,4],[26,nb.length,2]]);
+  const cd=new DataView(new ArrayBuffer(46));put(cd,[[0,0x02014b50,4],[4,20,2],[6,20,2],[14,0x21,2],[16,crc,4],[20,sz,4],[24,sz,4],[28,nb.length,2],[42,0,4]]);
+  const eo=new DataView(new ArrayBuffer(22));put(eo,[[0,0x06054b50,4],[8,1,2],[10,1,2],[12,46+nb.length,4],[16,30+nb.length+sz,4]]);
+  return new Blob([lh,nb,data,cd,nb,eo]);
+}
+$('export').addEventListener('click',()=>{
+  if(!cur)return;
+  const base='voice-vase-'+S.shape,pg=build(true).g,data=stl(pg);pg.dispose();
+  const url=URL.createObjectURL(new Blob([data],{type:'model/stl'})),a=document.createElement('a');
+  a.href=url;a.download=base+'.stl';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
+  setStatus('Saved '+base+'.stl. Open it in your slicer.');
+});
+
+/* ---------- start ---------- */
+outs();patLabel();flowerAvail();markSamples();
+const s0=SAMPLES[S.sample];setNote(normalize(s0.make()),s0.dur,'Example · '+s0.label,fmt(s0.dur)+' · example');
+})();
+</script>
+
+</body>
+</html>
