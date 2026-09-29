@@ -272,9 +272,9 @@ function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.i
 function bursts(list){const a=new Float32Array(N);for(const[c,w,h]of list){for(let i=0;i<N;i++){const x=(i/N-c)/w;a[i]+=h*Math.exp(-x*x)}}return a}
 function speech(seed,words,soft){const r=rng(seed);const L=[];let p=.04;for(let k=0;k<words;k++){const syl=1+Math.floor(r()*3);for(let s=0;s<syl;s++){L.push([p,.013+r()*.015+(soft||0),.4+r()*.6]);p+=.03+r()*.02}p+=.025+r()*.05}const sc=.94/p;return bursts(L.map(([c,w,h])=>[c*sc,w*sc,h]))}
 const SAMPLES={
-  about:{file:'examples/about-you.mp3',label:'About You',chip:'About You'},
-  still:{file:'examples/youre-still-the-one.mp3',label:'You’re Still the One',chip:'You’re Still the One'},
-  thinking:{file:'examples/thinking-of-u.mp3',label:'Thinking of U',chip:'Thinking of U'}
+  about:{file:'examples/about%20you.mp3',label:'About You',chip:'About You'},
+  still:{file:'examples/youre%20still%20the%20one.mp3',label:'You’re Still the One',chip:'You’re Still the One'},
+  thinking:{file:'examples/thinking%20of%20u.mp3',label:'Thinking of U',chip:'Thinking of U'}
 };
 
 /* ---------- envelope helpers ---------- */
