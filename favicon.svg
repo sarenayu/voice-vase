@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="15" fill="#FBEEF0"/>
+  <!-- leaf -->
+  <path d="M30 27 C22 22 19 14 21 8 C27 12 30 19 30 27 Z" fill="#7E9B5E"/>
+  <!-- arching stem -->
+  <path d="M32 29 C31 17 36 9 46 9 C50 9 52 11 53 13" fill="none" stroke="#6F8B55" stroke-width="2.2" stroke-linecap="round"/>
+  <!-- bells hanging from the arch -->
+  <g fill="#FFFFFF" stroke="#6F8B55" stroke-width="1.1" stroke-linejoin="round">
+    <path d="M35.5 16 q0-4 3.5-4 q3.5 0 3.5 4 l1.3 2 h-9.6 z"/>
+    <path d="M42.5 13.5 q0-3.6 3.2-3.6 q3.2 0 3.2 3.6 l1.2 1.8 h-8.8 z"/>
+    <path d="M49.5 16.2 q0-3 2.6-3 q2.6 0 2.6 3 l1 1.5 h-7.2 z"/>
+  </g>
+  <!-- the voice-note vase: stacked rounded bars -->
+  <g fill="#D4677B">
+    <rect x="29" y="28" width="6" height="30" rx="2"/>
+    <rect x="25" y="28" width="14" height="4.8" rx="2.4"/>
+    <rect x="20" y="33.5" width="24" height="4.8" rx="2.4"/>
+    <rect x="16" y="39" width="32" height="4.8" rx="2.4"/>
+    <rect x="21" y="44.5" width="22" height="4.8" rx="2.4"/>
+    <rect x="18" y="50" width="28" height="4.8" rx="2.4"/>
+    <rect x="24" y="55.5" width="16" height="3.6" rx="1.8"/>
+  </g>
+</svg>
