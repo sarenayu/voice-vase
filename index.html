@@ -95,6 +95,14 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-ui);font-size:
 .file div{min-width:0}
 .file b{display:block;font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .file small{color:var(--muted);font-size:12px}
+.recrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.recdot{width:9px;height:9px;border-radius:50%;background:var(--rose)}
+.pill.on{background:var(--rose-wash);border-color:var(--rose-line)}
+.pill.on .recdot{animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25}}
+@media (prefers-reduced-motion: reduce){.pill.on .recdot{animation:none}}
+.trim{display:flex;flex-direction:column;gap:8px}
+.trim canvas{width:100%;height:56px;display:block;border-radius:8px;background:#F3F1ED}
 .status{font-size:12px;color:var(--muted);margin:0;min-height:0}
 .status.err{color:#B8382F}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
@@ -162,13 +170,20 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-ui);font-size:
         <label class="drop" id="drop">
           <input type="file" id="file" accept="audio/*,.m4a,.mp3,.wav,.aac,.ogg,.caf,.opus">
           <b>Drop a voice note or click to upload</b>
-          <small>The one they sent you · m4a, mp3 or wav</small>
+          <small>The one they sent you · up to 2 minutes</small>
         </label>
         <div class="file">
           <span class="wave" id="miniWave" aria-hidden="true"></span>
           <div><b id="fileName">Example · Good morning, love</b><small id="fileMeta">0:04 · example</small></div>
         </div>
+        <div class="recrow"><button class="pill" id="rec" type="button"><span class="recdot"></span><span id="recLabel">Record a voice note</span></button><span class="meta" id="recTime"></span></div>
         <p class="status" id="status" role="status"></p>
+        <div class="trim" id="trim" hidden>
+          <div class="sub">Keep your favourite part · <span id="trimInfo"></span></div>
+          <canvas id="trimWave" aria-hidden="true"></canvas>
+          <div class="slider"><label for="tStart">Start</label><output id="o-tStart"></output><input type="range" id="tStart" min="0" max="10" step="1" value="0"></div>
+          <div class="slider"><label for="tEnd">End</label><output id="o-tEnd"></output><input type="range" id="tEnd" min="0" max="10" step="1" value="10"></div>
+        </div>
         <div class="sub">Or try an example</div>
         <div class="chips" id="samples"></div>
       </section>
@@ -257,22 +272,22 @@ function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.i
 function bursts(list){const a=new Float32Array(N);for(const[c,w,h]of list){for(let i=0;i<N;i++){const x=(i/N-c)/w;a[i]+=h*Math.exp(-x*x)}}return a}
 function speech(seed,words,soft){const r=rng(seed);const L=[];let p=.04;for(let k=0;k<words;k++){const syl=1+Math.floor(r()*3);for(let s=0;s<syl;s++){L.push([p,.013+r()*.015+(soft||0),.4+r()*.6]);p+=.03+r()*.02}p+=.025+r()*.05}const sc=.94/p;return bursts(L.map(([c,w,h])=>[c*sc,w*sc,h]))}
 const SAMPLES={
-  morning:{label:'Good morning, love',chip:'Good morning',dur:4,make:()=>speech(3,4)},
-  miss:{label:'I miss you. Come home soon',chip:'I miss you',dur:5,make:()=>speech(11,6,.006)},
-  anniv:{label:'Happy anniversary, my favorite person',chip:'Anniversary',dur:6,make:()=>speech(29,7)},
-  song:{label:'A little song, just for you',chip:'A little song',dur:8,make:()=>bursts([[.07,.035,.55],[.15,.03,.6],[.26,.06,.9],[.4,.055,.75],[.54,.06,.95],[.71,.1,1],[.87,.045,.55],[.95,.03,.4]])},
-  night:{label:'Goodnight, sleep well, I love you',chip:'Goodnight',dur:12,make:()=>speech(47,14,.004)}
+  morning:{file:'examples/good-morning.m4a',label:'Good morning, love',chip:'Good morning',dur:4,make:()=>speech(3,4)},
+  miss:{file:'examples/i-miss-you.m4a',label:'I miss you. Come home soon',chip:'I miss you',dur:5,make:()=>speech(11,6,.006)},
+  anniv:{file:'examples/anniversary.m4a',label:'Happy anniversary, my favorite person',chip:'Anniversary',dur:6,make:()=>speech(29,7)},
+  song:{file:'examples/little-song.m4a',label:'A little song, just for you',chip:'A little song',dur:8,make:()=>bursts([[.07,.035,.55],[.15,.03,.6],[.26,.06,.9],[.4,.055,.75],[.54,.06,.95],[.71,.1,1],[.87,.045,.55],[.95,.03,.4]])},
+  night:{file:'examples/goodnight.m4a',label:'Goodnight, sleep well, I love you',chip:'Goodnight',dur:12,make:()=>speech(47,14,.004)}
 };
 
 /* ---------- envelope helpers ---------- */
 function normalize(a){let m=0;for(const v of a)m=Math.max(m,v);const o=new Float32Array(a.length);for(let i=0;i<a.length;i++)o[i]=m?Math.sqrt(a[i]/m):0;return o}
-function fromBuffer(buf){
-  const len=buf.length,chs=buf.numberOfChannels,bins=1024,step=Math.max(1,Math.floor(len/bins)),rms=new Float32Array(bins);
-  for(let b=0;b<bins;b++){let s=0,c=0;for(let ch=0;ch<chs;ch++){const d=buf.getChannelData(ch);for(let i=b*step;i<Math.min(len,(b+1)*step);i+=4){s+=d[i]*d[i];c++}}rms[b]=c?Math.sqrt(s/c):0}
+function fromBuffer(buf,t0,t1){
+  t0=t0||0;t1=t1==null?buf.duration:t1;const sr=buf.sampleRate,o=Math.floor(t0*sr),len=Math.max(1,Math.min(buf.length,Math.floor(t1*sr))-o),chs=buf.numberOfChannels,bins=1024,step=Math.max(1,Math.floor(len/bins)),rms=new Float32Array(bins),span=len/sr;
+  for(let b=0;b<bins;b++){let s=0,c=0;for(let ch=0;ch<chs;ch++){const d=buf.getChannelData(ch);for(let i=o+b*step;i<Math.min(o+len,o+(b+1)*step);i+=4){s+=d[i]*d[i];c++}}rms[b]=c?Math.sqrt(s/c):0}
   let peak=0;for(const v of rms)peak=Math.max(peak,v);if(peak<1e-5)throw new Error('silent');
   let a=0,z=bins-1;while(a<z&&rms[a]<peak*.08)a++;while(z>a&&rms[z]<peak*.08)z--;
   const out=new Float32Array(N);for(let i=0;i<N;i++){const x=a+(z-a)*i/(N-1),i0=Math.floor(x),f=x-i0;out[i]=rms[i0]*(1-f)+(rms[Math.min(bins-1,i0+1)]||0)*f}
-  return {env:normalize(out),start:a/bins*buf.duration,end:(z+1)/bins*buf.duration};
+  return {env:normalize(out),start:t0+a/bins*span,end:t0+(z+1)/bins*span};
 }
 function smoothed(a,passes,cyclic){let x=Float32Array.from(a);for(let p=0;p<passes;p++){const y=new Float32Array(x.length),n=x.length;for(let i=0;i<n;i++){const l=cyclic?x[(i-1+n)%n]:x[Math.max(0,i-1)],r=cyclic?x[(i+1)%n]:x[Math.min(n-1,i+1)];y[i]=(l+2*x[i]+r)/4}x=y}return x}
 function cyclicize(a){const x=Float32Array.from(a),n=x.length,k=20;for(let j=0;j<k;j++){const f=(j+1)/(k+1);x[n-k+j]=x[n-k+j]*(1-f)+x[0]*f}return x}
@@ -488,12 +503,10 @@ function play(){
   actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume();
   const t0=actx.currentTime+.05;let src,offset=0;
   if(S.buffer){src=actx.createBufferSource();src.buffer=S.buffer;src.connect(actx.destination);offset=S.trimStart||0;src.start(t0,offset,S.duration)}
-  else{ // hum the example's shape so there is something to hear
-    const o=actx.createOscillator(),f=actx.createBiquadFilter(),g=actx.createGain();o.type='triangle';o.frequency.value=220;f.type='lowpass';f.frequency.value=1200;
-    const cv2=new Float32Array(S.raw.length);for(let i=0;i<cv2.length;i++)cv2[i]=S.raw[i]*.25;
-    g.gain.setValueAtTime(0,t0);g.gain.setValueCurveAtTime(cv2,t0,S.duration);
-    const lfo=actx.createOscillator(),lg=actx.createGain();lfo.frequency.value=2.6;lg.gain.value=40;lfo.connect(lg).connect(o.frequency);lfo.start(t0);lfo.stop(t0+S.duration);
-    o.connect(f).connect(g).connect(actx.destination);o.start(t0);o.stop(t0+S.duration);src=o;
+  else{ // no recording behind this example: read the words aloud with the device's voice
+    const words=$('words').value.trim()||S.words,timer=setTimeout(()=>src.onended&&src.onended(),S.duration*1000+400);
+    src={stop(){clearTimeout(timer);if(window.speechSynthesis)speechSynthesis.cancel()},onended:null};
+    if(window.speechSynthesis&&words){speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(words);u.rate=.92;u.pitch=1.05;speechSynthesis.speak(u)}
   }
   playing=src;src.onended=()=>{if(playing===src)stopPlay()};
   $('playIcon').innerHTML='<path d="M1 0.5h3v9H1zM6 0.5h3v9H6z"/>';$('playLabel').textContent='Pause';
@@ -511,19 +524,54 @@ function setNote(raw,duration,title,meta,buffer,trimStart){
 function setStatus(msg,err){const s=$('status');s.textContent=msg;s.classList.toggle('err',!!err)}
 const samplesEl=$('samples');
 Object.entries(SAMPLES).forEach(([k,v])=>{const b=document.createElement('button');b.type='button';b.className='chip';b.id='s-'+k;b.textContent=v.chip;
-  b.addEventListener('click',()=>{S.sample=k;S.words=v.label;markSamples();setStatus('');setNote(normalize(v.make()),v.dur,'Example · '+v.label,fmt(v.dur)+' · example')});samplesEl.appendChild(b)});
+  b.addEventListener('click',()=>loadExample(k));samplesEl.appendChild(b)});
 function markSamples(){[...samplesEl.children].forEach(b=>b.setAttribute('aria-pressed',b.id==='s-'+S.sample))}
-async function loadFile(file){
-  if(!file)return;setStatus('Listening to '+file.name+'…');
+const MAX_SEC=120;
+async function decode(ab){actx=actx||new (window.AudioContext||window.webkitAudioContext)();return await new Promise((res,rej)=>{const p=actx.decodeAudioData(ab,res,rej);if(p&&p.then)p.then(res,rej)})}
+async function loadData(ab,name,isExample){
   try{
-    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
-    const ab=await file.arrayBuffer();
-    const buf=await new Promise((res,rej)=>{const p=actx.decodeAudioData(ab,res,rej);if(p&&p.then)p.then(res,rej)});
-    const r=fromBuffer(buf),dur=Math.max(.3,r.end-r.start);
-    S.sample=null;S.words='';markSamples();setStatus('');
-    setNote(r.env,dur,file.name,fmt(dur)+' of voice · silence trimmed',buf,r.start);
-  }catch(e){setStatus(e&&e.message==='silent'?'That recording seems to be silent. Try another one.':'This browser couldn’t open that file. Re-save it as .m4a or .mp3 and try again.',true)}
+    const buf=await decode(ab);
+    if(buf.duration>MAX_SEC+1){setStatus(`That recording is ${fmt(buf.duration)} long. Voice Vase takes up to 2 minutes, so trim it first or record just the part that matters.`,true);return false}
+    S.full={buf,name,peaks:null};
+    const d=buf.duration,t=$('tStart'),e=$('tEnd');t.max=e.max=Math.round(d*10);t.value=0;e.value=Math.round(Math.min(d,d>30?20:d)*10);
+    $('trim').hidden=!!isExample||d<3;applyTrim();if(!isExample&&d>30)setStatus('Long note: we kept the first 20 seconds. Drag Start and End to pick your favourite part.');else if(!isExample)setStatus('');
+    return true;
+  }catch(e){setStatus(e&&e.message==='silent'?'That recording seems to be silent. Try another one.':'This browser couldn’t open that file. Re-save it as .m4a or .mp3 and try again.',true);return false}
 }
+function applyTrim(){
+  const f=S.full;if(!f)return;let t0=+$('tStart').value/10,t1=+$('tEnd').value/10;if(t1-t0<1){t1=Math.min(f.buf.duration,t0+1);t0=t1-1}
+  const r=fromBuffer(f.buf,t0,t1),dur=Math.max(.3,r.end-r.start);
+  $('o-tStart').textContent=fmt1(t0);$('o-tEnd').textContent=fmt1(t1);$('trimInfo').textContent=fmt1(t1-t0)+' of '+fmt(f.buf.duration);
+  setNote(r.env,dur,f.name,fmt(dur)+' of voice'+(f.buf.duration-dur>1?' · trimmed':''),f.buf,r.start);drawTrim();
+}
+const fmt1=s=>Math.floor(s/60)+':'+(s%60).toFixed(1).padStart(4,'0');
+function drawTrim(){
+  const f=S.full,cv=$('trimWave');if(!f||$('trim').hidden)return;const dpr=Math.min(2,window.devicePixelRatio||1),W=cv.clientWidth*dpr,Hh=56*dpr;cv.width=W;cv.height=Hh;
+  const n=Math.max(40,Math.floor(cv.clientWidth/4));if(!f.peaks||f.peaks.length!==n){const d=f.buf.getChannelData(0),st=Math.floor(d.length/n);f.peaks=[];let mx=0;for(let i=0;i<n;i++){let m=0;for(let j=i*st;j<(i+1)*st;j+=16)m=Math.max(m,Math.abs(d[j]));f.peaks.push(m);mx=Math.max(mx,m)}f.peaks=f.peaks.map(v=>v/(mx||1))}
+  const x=cv.getContext('2d'),t0=+$('tStart').value/10/f.buf.duration,t1=+$('tEnd').value/10/f.buf.duration,bw=W/n;x.clearRect(0,0,W,Hh);
+  f.peaks.forEach((v,i)=>{const u=(i+.5)/n,h=Math.max(2*dpr,v*(Hh-10*dpr));x.fillStyle=u>=t0&&u<=t1?'#D4677B':'#CFCBC5';x.fillRect(i*bw+bw*.2,(Hh-h)/2,bw*.6,h)});
+  x.fillStyle='#1D1C1A';[t0,t1].forEach(u=>x.fillRect(u*W-dpr,0,2*dpr,Hh));
+}
+let trimRaf=0;['tStart','tEnd'].forEach(id=>$(id).addEventListener('input',()=>{const a=$('tStart'),b=$('tEnd');if(+b.value-+a.value<10){if(id==='tStart')a.value=Math.max(0,+b.value-10);else b.value=Math.min(+b.max,+a.value+10)}cancelAnimationFrame(trimRaf);trimRaf=requestAnimationFrame(applyTrim)}));
+window.addEventListener('resize',()=>drawTrim());
+async function loadFile(file){if(!file)return;setStatus('Listening to '+file.name+'…');S.sample=null;S.words='';markSamples();await loadData(await file.arrayBuffer(),file.name)}
+async function loadExample(k){
+  const v=SAMPLES[k];S.sample=k;S.words=v.label;markSamples();setStatus('');
+  if(v.file){try{const r=await fetch(v.file);if(r.ok&&await loadData(await r.arrayBuffer(),'Example · '+v.label,true))return}catch(e){}}
+  S.full=null;$('trim').hidden=true;setStatus('');setNote(normalize(v.make()),v.dur,'Example · '+v.label,fmt(v.dur)+' · read aloud by your device');
+}
+/* recording (needs a secure https page, e.g. Vercel) */
+let rec=null,recTimer=0;
+function recUI(on){$('rec').classList.toggle('on',on);$('recLabel').textContent=on?'Stop recording':'Record a voice note';if(!on)$('recTime').textContent=''}
+$('rec').addEventListener('click',async()=>{
+  if(rec){rec.stop();return}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||!window.MediaRecorder){setStatus('Recording isn’t supported in this browser. Upload a file instead.',true);return}
+  let stream;try{stream=await navigator.mediaDevices.getUserMedia({audio:true})}catch(e){setStatus('Microphone access was blocked. Allow it in your browser settings, or upload a file instead.',true);return}
+  stopPlay();const chunks=[];rec=new MediaRecorder(stream);rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+  rec.onstop=async()=>{stream.getTracks().forEach(t=>t.stop());clearInterval(recTimer);const type=rec.mimeType;rec=null;recUI(false);S.sample=null;S.words='';markSamples();setStatus('Shaping your recording…');await loadData(await new Blob(chunks,{type}).arrayBuffer(),'Your recording')};
+  rec.start();const t0=Date.now();recUI(true);setStatus('Recording… press Stop when you’re done.');
+  recTimer=setInterval(()=>{const sec=(Date.now()-t0)/1000;$('recTime').textContent=fmt(sec)+' / 2:00';if(sec>=MAX_SEC&&rec)rec.stop()},200);
+});
 $('file').addEventListener('change',e=>loadFile(e.target.files[0]));
 const drop=$('drop');
 ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));
@@ -578,7 +626,7 @@ $('export').addEventListener('click',()=>{
 
 /* ---------- start ---------- */
 outs();patLabel();flowerAvail();markSamples();
-const s0=SAMPLES[S.sample];setNote(normalize(s0.make()),s0.dur,'Example · '+s0.label,fmt(s0.dur)+' · example');
+loadExample(S.sample);
 })();
 </script>
 
