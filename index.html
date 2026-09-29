@@ -174,7 +174,7 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-ui);font-size:
         </label>
         <div class="file">
           <span class="wave" id="miniWave" aria-hidden="true"></span>
-          <div><b id="fileName">Example · Good morning, love</b><small id="fileMeta">0:04 · example</small></div>
+          <div><b id="fileName">Loading…</b><small id="fileMeta">&nbsp;</small></div>
         </div>
         <div class="recrow"><button class="pill" id="rec" type="button"><span class="recdot"></span><span id="recLabel">Record a voice note</span></button><span class="meta" id="recTime"></span></div>
         <p class="status" id="status" role="status"></p>
@@ -184,7 +184,7 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-ui);font-size:
           <div class="slider"><label for="tStart">Start</label><output id="o-tStart"></output><input type="range" id="tStart" min="0" max="10" step="1" value="0"></div>
           <div class="slider"><label for="tEnd">End</label><output id="o-tEnd"></output><input type="range" id="tEnd" min="0" max="10" step="1" value="10"></div>
         </div>
-        <div class="sub">Or try an example</div>
+        <div class="sub">Or listen to an example</div>
         <div class="chips" id="samples"></div>
       </section>
 
@@ -243,7 +243,7 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-ui);font-size:
 
       <section class="sec">
         <h2>Their words</h2>
-        <div class="field"><label for="words">Type what they said</label><input id="words" maxlength="120" placeholder="Good morning, love"></div>
+        <div class="field"><label for="words">Type what they said</label><input id="words" maxlength="120" placeholder="Type their words to show under the vase"></div>
         <p class="sub">Each word lights up as they say it when you press play.</p>
       </section>
     </div>
@@ -260,7 +260,7 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-ui);font-size:
 (function(){
 const $=id=>document.getElementById(id);
 const N=256;
-const S={raw:null,duration:0,buffer:null,sample:'morning',words:'Good morning, love',shape:'vase',pat:'bars',intensity:60,smooth:1,twist:0,pitch:6.5,printMode:'full',height:180,wall:2.4,glaze:'porcelain',flower:'tulip',bloom:'blush'};
+const S={raw:null,duration:0,buffer:null,sample:'about',words:'',shape:'vase',pat:'bars',intensity:60,smooth:1,twist:0,pitch:6.5,printMode:'full',height:180,wall:2.4,glaze:'porcelain',flower:'tulip',bloom:'blush'};
 const DEFAULT_H={bud:170,vase:180,bowl:55,candle:75};
 const H_RANGE={bud:[100,260],vase:[110,300],bowl:[30,110],candle:[50,140]}; // keeps each vessel in proportions that still read as that vessel
 const SHAPE_NAME={bud:'Bud vase',vase:'Vase',bowl:'Dish',candle:'Candle cup'};
@@ -272,11 +272,9 @@ function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.i
 function bursts(list){const a=new Float32Array(N);for(const[c,w,h]of list){for(let i=0;i<N;i++){const x=(i/N-c)/w;a[i]+=h*Math.exp(-x*x)}}return a}
 function speech(seed,words,soft){const r=rng(seed);const L=[];let p=.04;for(let k=0;k<words;k++){const syl=1+Math.floor(r()*3);for(let s=0;s<syl;s++){L.push([p,.013+r()*.015+(soft||0),.4+r()*.6]);p+=.03+r()*.02}p+=.025+r()*.05}const sc=.94/p;return bursts(L.map(([c,w,h])=>[c*sc,w*sc,h]))}
 const SAMPLES={
-  morning:{file:'examples/good-morning.m4a',label:'Good morning, love',chip:'Good morning',dur:4,make:()=>speech(3,4)},
-  miss:{file:'examples/i-miss-you.m4a',label:'I miss you. Come home soon',chip:'I miss you',dur:5,make:()=>speech(11,6,.006)},
-  anniv:{file:'examples/anniversary.m4a',label:'Happy anniversary, my favorite person',chip:'Anniversary',dur:6,make:()=>speech(29,7)},
-  song:{file:'examples/little-song.m4a',label:'A little song, just for you',chip:'A little song',dur:8,make:()=>bursts([[.07,.035,.55],[.15,.03,.6],[.26,.06,.9],[.4,.055,.75],[.54,.06,.95],[.71,.1,1],[.87,.045,.55],[.95,.03,.4]])},
-  night:{file:'examples/goodnight.m4a',label:'Goodnight, sleep well, I love you',chip:'Goodnight',dur:12,make:()=>speech(47,14,.004)}
+  about:{file:'examples/about-you.mp3',label:'About You',chip:'About You'},
+  still:{file:'examples/youre-still-the-one.mp3',label:'You’re Still the One',chip:'You’re Still the One'},
+  thinking:{file:'examples/thinking-of-u.mp3',label:'Thinking of U',chip:'Thinking of U'}
 };
 
 /* ---------- envelope helpers ---------- */
@@ -556,9 +554,9 @@ let trimRaf=0;['tStart','tEnd'].forEach(id=>$(id).addEventListener('input',()=>{
 window.addEventListener('resize',()=>drawTrim());
 async function loadFile(file){if(!file)return;setStatus('Listening to '+file.name+'…');S.sample=null;S.words='';markSamples();await loadData(await file.arrayBuffer(),file.name)}
 async function loadExample(k){
-  const v=SAMPLES[k];S.sample=k;S.words=v.label;markSamples();setStatus('');
-  if(v.file){try{const r=await fetch(v.file);if(r.ok&&await loadData(await r.arrayBuffer(),'Example · '+v.label,true))return}catch(e){}}
-  S.full=null;$('trim').hidden=true;setStatus('');setNote(normalize(v.make()),v.dur,'Example · '+v.label,fmt(v.dur)+' · read aloud by your device');
+  const v=SAMPLES[k];S.sample=k;S.words='';markSamples();setStatus('Loading '+v.label+'…');
+  try{const r=await fetch(v.file);if(r.ok&&await loadData(await r.arrayBuffer(),v.label,true)){setStatus('');return}}catch(e){}
+  setStatus('Couldn’t load that example. Record or upload a voice note instead.',true);
 }
 /* recording (needs a secure https page, e.g. Vercel) */
 let rec=null,recTimer=0;
